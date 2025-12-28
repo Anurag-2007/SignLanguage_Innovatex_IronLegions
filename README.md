@@ -4,6 +4,10 @@
 
 **Real-time ML Sign Language to Text Converter**
 
+---
+#Open [https://signlang-ironlegions.vercel.app](https://signlang-ironlegions.vercel.app) to view it in your browser.
+---
+
 
 
 **Signetic** is an accessibility-focused web application that translates American Sign Language (ASL) fingerspelling into text in real-time. Built with TensorFlow.js and Computer Vision, it runs entirely in the browser, offering a privacy-first, low-latency solution for bridging communication gaps.
@@ -84,7 +88,7 @@ npm start
 ```
 
 
-Open [https://signlang-ironlegions.vercel.app](https://signlang-ironlegions.vercel.app) to view it in your browser.
+
 
 ---
 
