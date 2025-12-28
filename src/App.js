@@ -8,7 +8,7 @@ export default function App() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const [detector, setDetector] = useState(null);
-  const [gesture, setGesture] = useState("⏳ Preparing Model...");
+  const [gesture, setGesture] = useState("⏳ Loading...");
   const [text, setText] = useState("");
   const [dim, setDim] = useState({ w: 640, h: 480 });
 
@@ -17,7 +17,7 @@ export default function App() {
   const stableCount = useRef(0);
   const STABLE_THRESHOLD = 15;
 
-  // --- NEW: Track Hand Presence for Auto-Space ---
+  // --- Track Hand Presence for Auto-Space ---
   const wasHandPresent = useRef(false);
 
   // --- SMOOTHING BUFFER ---
@@ -28,19 +28,34 @@ export default function App() {
   const THEME_COLOR = "#FFFFC5";
   const THEME_RGB = "255, 255, 197";
 
+  // --- RESPONSIVE DIMENSIONS LOGIC ---
   useEffect(() => {
     const updateDimensions = () => {
-      const maxWidth = window.innerWidth - 40;
-      const maxHeight = window.innerHeight * 0.5;
-      const aspectRatio = 4 / 3;
-      let width = maxWidth;
-      let height = width / aspectRatio;
-      if (height > maxHeight) {
-        height = maxHeight;
-        width = height * aspectRatio;
+      // Get available screen width (minus some padding)
+      const screenWidth = window.innerWidth - 20; 
+      // Limit max height to leave room for text/buttons on mobile
+      const maxScreenHeight = window.innerHeight * 0.6; 
+      
+      const targetAspectRatio = 4 / 3;
+      
+      let w = screenWidth;
+      let h = w / targetAspectRatio;
+
+      // If calculated height is too tall, scale down based on height
+      if (h > maxScreenHeight) {
+        h = maxScreenHeight;
+        w = h * targetAspectRatio;
       }
-      setDim({ w: Math.round(width), h: Math.round(height) });
+
+      // Cap at 640x480 for desktop performance
+      if (w > 640) {
+        w = 640;
+        h = 480;
+      }
+
+      setDim({ w: Math.round(w), h: Math.round(h) });
     };
+
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     window.addEventListener("orientationchange", updateDimensions);
@@ -59,7 +74,7 @@ export default function App() {
         { runtime: "tfjs", modelType: "full", maxHands: 1 }
       );
       setDetector(d);
-      setGesture("👀 Show your hand");
+      setGesture("👀 Show Hand");
     })();
   }, []);
 
@@ -83,9 +98,7 @@ export default function App() {
     const distThumbIndex = Math.hypot(thumbTip.x - k[8].x, thumbTip.y - k[8].y);
     const distIndexTipKnuckle = Math.hypot(k[8].x - k[5].x, k[8].y - k[5].y);
 
-    // --- ALPHABET LOGIC ---
-    
-    // Single Finger Group
+    // --- LOGIC ---
     if (indexExt && !middleExt && !ringExt && !pinkyExt) {
       const xDiff = Math.abs(k[8].x - k[5].x);
       const yDiff = Math.abs(k[8].y - k[5].y);
@@ -96,17 +109,14 @@ export default function App() {
       return "D";
     }
 
-    // Global O
     if (!middleExt && !ringExt && !pinkyExt) {
       if (distIndexTipKnuckle > T(0.55)) return "O";
     }
 
-    // F
     if (distThumbIndex < T(0.45)) {
       if (middleExt && ringExt && pinkyExt) return "F";
     }
 
-    // Two Fingers
     if (indexExt && middleExt && !ringExt && !pinkyExt) {
       const xDiff = Math.abs(k[8].x - k[5].x);
       const yDiff = Math.abs(k[8].y - k[5].y);
@@ -117,7 +127,6 @@ export default function App() {
       return "U";
     }
 
-    // Fists
     if (!indexExt && !middleExt && !ringExt && !pinkyExt) {
       if (distIndexTipKnuckle > T(0.65)) return "O";
       if (thumbTip.y > indexMcp.y) return "E";
@@ -126,14 +135,12 @@ export default function App() {
       return "S";
     }
 
-    // Pinky
     if (!indexExt && !middleExt && !ringExt && pinkyExt) {
       const spread = Math.hypot(thumbTip.x - k[20].x, thumbTip.y - k[20].y);
       if (spread > T(1.2)) return "Y";
       return "I";
     }
 
-    // Open Hand
     if (indexExt && middleExt && ringExt && pinkyExt) {
       if (Math.abs(thumbTip.x - indexMcp.x) < T(0.35)) return "B";
       if (distThumbIndex < T(0.8) && distIndexTipKnuckle < T(0.85)) return "C";
@@ -152,17 +159,15 @@ export default function App() {
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Explicitly set canvas size to match the calculated dimension state
+    canvas.width = dim.w;
+    canvas.height = dim.h;
+    ctx.clearRect(0, 0, dim.w, dim.h);
 
     const hands = await detector.estimateHands(video, { flipHorizontal: true });
 
-    // --- HAND DETECTED ---
     if (hands.length > 0) {
-      // Mark that we see a hand
       wasHandPresent.current = true;
-
       const hand = hands[0];
       const rawGesture = recognizeGesture(hand);
 
@@ -185,7 +190,6 @@ export default function App() {
 
       setGesture(smoothedGesture);
 
-      // Typing Logic
       if (smoothedGesture === stableGesture.current) {
         stableCount.current += 1;
       } else {
@@ -194,10 +198,7 @@ export default function App() {
       }
 
       if (stableCount.current >= STABLE_THRESHOLD) {
-        if (
-          smoothedGesture !== "🖐️" &&
-          smoothedGesture !== "👀 Show your hand"
-        ) {
+        if (smoothedGesture !== "🖐️" && smoothedGesture !== "👀 Show your hand") {
           if (smoothedGesture !== lastWrittenLetter.current) {
             setText((t) => t + smoothedGesture);
             lastWrittenLetter.current = smoothedGesture;
@@ -210,31 +211,27 @@ export default function App() {
       ctx.fillStyle = THEME_COLOR;
       hand.keypoints.forEach((p) => {
         ctx.beginPath();
+        // Scale points if video size differs from internal resolution
         ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
         ctx.fill();
       });
-    } 
-    // --- HAND NOT DETECTED (LOST) ---
-    else {
-      setGesture("👀 Show your hand");
+    } else {
+      setGesture("👀 Show Hand");
       stableCount.current = 0;
       lastWrittenLetter.current = "";
 
       // ** AUTO SPACE LOGIC **
       if (wasHandPresent.current) {
-          // The hand was just removed!
           setText(prev => {
-              // Only add space if the last char isn't already a space
               if (prev.length > 0 && !prev.endsWith(" ")) {
                   return prev + " ";
               }
               return prev;
           });
-          // Reset flag so we don't spam spaces
           wasHandPresent.current = false;
       }
     }
-  }, [detector, recognizeGesture]);
+  }, [detector, recognizeGesture, dim]);
 
   useEffect(() => {
     if (!detector) return;
@@ -253,19 +250,28 @@ export default function App() {
         background: "#ede7e7ff",
         minHeight: "100vh",
         color: "#210303ff",
-        textAlign: "center",
-        padding: 10,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start", // Align top for mobile
+        padding: "20px 10px", // Less padding on sides for mobile
+        boxSizing: "border-box",
+        overflowX: "hidden"
       }}
     >
-      <h1 style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}>
+      <h1 style={{ 
+        fontSize: "clamp(1.8rem, 5vw, 2.5rem)", 
+        margin: "0 0 10px 0" 
+      }}>
         🤟 ASL Fingerspelling
       </h1>
 
       <h2
         style={{
-          fontSize: "clamp(3rem, 10vw, 5rem)",
+          fontSize: "clamp(3rem, 10vw, 4.5rem)",
           color: "#272704ff",
-          margin: "10px 0",
+          margin: "0 0 15px 0",
+          minHeight: "60px"
         }}
       >
         {gesture}
@@ -273,26 +279,29 @@ export default function App() {
 
       <div
         style={{
-          margin: "10px auto",
-          padding: 15,
+          width: "100%",
+          maxWidth: "600px",
+          padding: "15px",
           border: `2px solid ${THEME_COLOR}`,
           borderRadius: 12,
-          minHeight: 80,
-          maxWidth: "90%",
-          fontSize: "1.6rem",
+          minHeight: "70px",
+          fontSize: "1.5rem",
           background: `rgba(${THEME_RGB}, 0.1)`,
           wordWrap: "break-word",
+          textAlign: "left",
+          marginBottom: "20px"
         }}
       >
-        {text || "✍️ Start signing..."}
+        {text || <span style={{opacity: 0.6}}>✍️ Start signing...</span>}
       </div>
 
       <div
         style={{
           display: "flex",
           justifyContent: "center",
-          gap: "20px",
-          margin: "15px 0",
+          gap: "15px",
+          marginBottom: "20px",
+          flexWrap: "wrap"
         }}
       >
         <button
@@ -306,9 +315,11 @@ export default function App() {
             color: "#fff",
             border: "none",
             borderRadius: 10,
-            fontSize: "1.2rem",
+            fontSize: "1rem",
             fontWeight: "bold",
             cursor: "pointer",
+            flex: "1 1 auto",
+            minWidth: "120px"
           }}
         >
           CLEAR ALL
@@ -325,25 +336,28 @@ export default function App() {
             color: "#fff",
             border: "none",
             borderRadius: 10,
-            fontSize: "1.2rem",
+            fontSize: "1rem",
             fontWeight: "bold",
             cursor: "pointer",
+            flex: "1 1 auto",
+            minWidth: "120px"
           }}
         >
           ⌫ BACKSPACE
         </button>
       </div>
 
+      {/* Camera Container */}
       <div
         style={{
-          margin: "auto",
+          position: "relative",
           width: dim.w,
           height: dim.h,
-          border: `6px solid #272704ff`,
+          border: `4px solid #272704ff`,
           borderRadius: "20px",
-          position: "relative",
-          boxShadow: `0 0 30px #010000ff`,
+          boxShadow: `0 0 20px #010000ff`,
           overflow: "hidden",
+          background: "#000"
         }}
       >
         <Webcam
@@ -356,7 +370,11 @@ export default function App() {
             height: dim.h,
             facingMode: "user",
           }}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ 
+            width: "100%", 
+            height: "100%", 
+            objectFit: "cover" // Ensures video fills the container
+          }}
         />
         <canvas
           ref={canvasRef}
