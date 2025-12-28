@@ -1,70 +1,128 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+# Signetic 
 
-In the project directory, you can run:
+**Real-time AI Sign Language to Text Converter**
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Signetic** is an accessibility-focused web application that translates American Sign Language (ASL) fingerspelling into text in real-time. Built with TensorFlow.js and Computer Vision, it runs entirely in the browser, offering a privacy-first, low-latency solution for bridging communication gaps.
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 🚀 Tech Stack
 
-### `npm run build`
+* **Frontend Library:** [React.js](https://reactjs.org/) (Hooks, Functional Components)
+* **Machine Learning:** [TensorFlow.js](https://www.tensorflow.org/js) (Client-side ML)
+* **Computer Vision:** [MediaPipe Hands](https://www.google.com/search?q=https://google.github.io/mediapipe/solutions/hands) (Hand landmark detection)
+* **State Management:** React `useState`, `useRef`, `useCallback`
+* **Web API:** Web Speech API (Text-to-Speech)
+* **Styling:** CSS-in-JS (Responsive Design)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 💡 Use Case
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The primary goal of **Signetic** is to facilitate communication for the Deaf and Hard-of-Hearing community in digital environments.
 
-### `npm run eject`
+1. **Educational Tool:** Helps learners practice ASL fingerspelling with instant feedback.
+2. **Communication Bridge:** Allows non-signers to understand fingerspelling without an interpreter.
+3. **Accessibility Interface:** Can be integrated into kiosks or video calls to provide a silent text-input method.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## ✨ Key Features
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 1. Real-Time Detection
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Uses a highly optimized TensorFlow model to detect 26 alphabets (A-Z) and specialized hand shapes instantly via the webcam.
 
-## Learn More
+### 2. Smart Stabilization
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Includes a **smoothing algorithm** (Buffer & Threshold) to prevent "flickering" text. It waits for the user to hold a gesture steady for a few frames before typing it.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 3. Auto-Space Functionality
 
-### Code Splitting
+Typing sentences is natural. Simply **move your hand out of the camera frame**, and the app automatically adds a `Space`, allowing for fluid sentence construction.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 4. Accessibility Tools
 
-### Analyzing the Bundle Size
+* **🔊 Hear Button:** Uses the Web Speech API (TTS) to read the typed text aloud, enabling two-way communication.
+* **⌫ Backspace:** Supports both the on-screen button and physical keyboard `Backspace` key to correct mistakes.
+* **⌨️ Keyboard Support:** Use `Escape` to clear text and `Spacebar` for manual spacing.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### 5. Responsive Design
 
-### Making a Progressive Web App
+* **Desktop:** Compact video feed to allow multitasking.
+* **Mobile:** Auto-detects portrait orientation and adjusts the camera aspect ratio (3:4) for a native app feel.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## 🛠️ Installation & Setup
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+1. **Clone the repository:**
+```bash
+git clone https://github.com/your-username/signetic.git
+cd signetic
 
-### Deployment
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
-### `npm run build` fails to minify
+2. **Install dependencies:**
+```bash
+npm install
+# or
+yarn install
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+
+
+3. **Run the application:**
+```bash
+npm start
+
+```
+
+
+Open [https://signlang-ironlegions.vercel.app](https://signlang-ironlegions.vercel.app) to view it in your browser.
+
+---
+
+## ✋ Supported Signs Demo
+
+Signetic supports the full ASL alphabet with specialized logic for tricky gestures.
+
+### **Static Letters**
+
+| Letter | Description |
+| --- | --- |
+| **A, E, S** | **Fist Variations:** Distinguishes based on thumb position (Side vs. Curled vs. Crossing fingers). |
+| **B, C, D** | **Open Hand Variations:** Tracks thumb tucks and index extension. |
+| **I, Y** | **Pinky Variations:** Distinguishes "I" (Fist + Pinky) vs "Y" (Thumb + Pinky). |
+
+### **Complex/Orientation Letters**
+
+| Gesture | Logic Used |
+| --- | --- |
+| **K** | ✌️ **Upward V** with thumb tucked inside. |
+| **P** | 👇 **Downward V** with thumb tucked inside (Inverse of K). |
+| **L** | 👆 Index up, Thumb out (90° angle). |
+| **Q** | 👇 **Downward L** (Index & Thumb pointing down). |
+| **M** | ✊ Thumb tucked between Ring & Pinky finger. |
+| **N** | ✊ Thumb tucked between Middle & Ring finger. |
+| **T** | ✊ Thumb tucked between Index & Middle finger. |
+| **R** | 🤞 Crossed Index and Middle fingers. |
+| **X** | 🪝 Hooked Index finger. |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! If you have ideas for improving the detection accuracy of dynamic signs (like J and Z), feel free to fork the repo and submit a PR.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/NewSign`)
+3. Commit your Changes (`git commit -m 'Add support for J'`)
+4. Push to the Branch (`git push origin feature/NewSign`)
+5. Open a Pull Request
+
