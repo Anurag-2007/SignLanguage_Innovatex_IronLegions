@@ -12,11 +12,11 @@
 
 ## 🚀 Tech Stack
 
-* **Frontend Library:** [React.js](https://reactjs.org/) (Hooks, Functional Components)
+* **Frontend Library:** [React.js](https://reactjs.org/) ( Functional Components)
 * **Machine Learning:** [TensorFlow.js](https://www.tensorflow.org/js) (Client-side ML)
 * **Computer Vision:** [MediaPipe Hands](https://www.google.com/search?q=https://google.github.io/mediapipe/solutions/hands) (Hand landmark detection)
 * **State Management:** React `useState`, `useRef`, `useCallback`
-* **Web API:** Web Speech API (Text-to-Speech)
+* **Web speech API:** Web Speech API (Text-to-Speech)
 * **Styling:** CSS-in-JS (Responsive Design)
 
 ---
