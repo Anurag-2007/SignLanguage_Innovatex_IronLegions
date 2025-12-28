@@ -8,9 +8,8 @@ export default function App() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const [detector, setDetector] = useState(null);
-  const [gesture, setGesture] = useState("⏳ Preparing Model...");
+  const [gesture, setGesture] = useState("⏳ Loading...");
   const [text, setText] = useState("");
-  const [dim, setDim] = useState({ w: 640, h: 480 });
 
   const lastWrittenLetter = useRef("");
   const stableGesture = useRef("");
@@ -32,28 +31,6 @@ export default function App() {
   const THEME_RGB = "255, 255, 197";
 
   useEffect(() => {
-    const updateDimensions = () => {
-      const maxWidth = window.innerWidth - 40;
-      const maxHeight = window.innerHeight * 0.5;
-      const aspectRatio = 4 / 3;
-      let width = maxWidth;
-      let height = width / aspectRatio;
-      if (height > maxHeight) {
-        height = maxHeight;
-        width = height * aspectRatio;
-      }
-      setDim({ w: Math.round(width), h: Math.round(height) });
-    };
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    window.addEventListener("orientationchange", updateDimensions);
-    return () => {
-      window.removeEventListener("resize", updateDimensions);
-      window.removeEventListener("orientationchange", updateDimensions);
-    };
-  }, []);
-
-  useEffect(() => {
     (async () => {
       await tf.ready();
       await tf.setBackend("webgl");
@@ -62,7 +39,7 @@ export default function App() {
         { runtime: "tfjs", modelType: "full", maxHands: 1 }
       );
       setDetector(d);
-      setGesture("👀 Show your hand");
+      setGesture("👀 Show Hand");
     })();
   }, []);
 
@@ -117,35 +94,17 @@ export default function App() {
     if (waveCycles.current >= 4) return "👋 HELLO";
 
     // --- 3. SINGLE FINGER GROUP (D, G, L, X) ---
-    // This handles ALL cases where Index is Extended but others are Curled.
     if (indexExt && !middleExt && !ringExt && !pinkyExt) {
-        
-        // ** G Check (Horizontal) **
-        // Compare X width vs Y height of the Index Finger.
-        // If Width > Height, finger is sideways.
         const xDiff = Math.abs(k[8].x - k[5].x);
         const yDiff = Math.abs(k[8].y - k[5].y);
         
-        // T(0.1) adds a buffer so slightly tilted fingers don't flicker.
-        if (xDiff > yDiff + T(0.1)) {
-            return "G";
-        }
-
-        // ** L Check (Thumb Out) **
-        const distThumbBase = Math.hypot(thumbTip.x - indexMcp.x, thumbTip.y - indexMcp.y);
-        if (distThumbBase > T(0.9)) {
-            return "L";
-        }
+        if (xDiff > yDiff + T(0.1)) return "G";
         
-        // ** X Check (Hooked) **
-        // If the tip is lower than the mid-joint (PIP), it's hooked.
-        // Note: Y increases downwards.
-        if (k[8].y > k[6].y - T(0.2)) {
-            return "X";
-        }
+        const distThumbBase = Math.hypot(thumbTip.x - indexMcp.x, thumbTip.y - indexMcp.y);
+        if (distThumbBase > T(0.9)) return "L";
+        
+        if (k[8].y > k[6].y - T(0.2)) return "X";
 
-        // ** D Check (Vertical) **
-        // If it's not G, L, or X, it must be D.
         return "D";
     }
 
@@ -205,11 +164,16 @@ export default function App() {
     const video = webcamRef.current.video;
     if (video.readyState !== 4) return;
 
+    // Set canvas dimensions to match video (Intrinsic size)
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
     const canvas = canvasRef.current;
+    
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    
     const ctx = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, videoWidth, videoHeight);
 
     const hands = await detector.estimateHands(video, { flipHorizontal: true });
 
@@ -272,7 +236,7 @@ export default function App() {
          ctx.fill();
       });
     } else {
-      setGesture("👀 Show your hand");
+      setGesture("👀 Show Hand");
       stableCount.current = 0;
       lastWrittenLetter.current = "";
     }
@@ -290,48 +254,129 @@ export default function App() {
   }, [detector, detect]);
 
   return (
-    <div style={{ background: "#ede7e7ff", minHeight: "100vh", color: "#210303ff", textAlign: "center", padding: 10 }}>
-      <h1 style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}>🤟 ASL Fingerspelling</h1>
+    <div style={styles.container}>
+      {/* Tiny Header */}
+      <h1 style={styles.title}>🤟 ASL Fingerspelling</h1>
       
-      <h2 style={{ fontSize: "clamp(3rem, 10vw, 5rem)", color: "#272704ff", margin: "10px 0" }}>{gesture}</h2>
+      {/* Tiny Status */}
+      <h2 style={{...styles.gestureDisplay, color: "#272704ff"}}>{gesture}</h2>
       
+      {/* Tiny Text Output */}
       <div style={{
-        margin: "10px auto", padding: 15, 
+        ...styles.textBox,
         border: `2px solid ${THEME_COLOR}`, 
-        borderRadius: 12,
-        minHeight: 80, maxWidth: "90%", fontSize: "1.6rem", 
         background: `rgba(${THEME_RGB}, 0.1)`, 
-        wordWrap: "break-word"
       }}>
-        {text || "✍️ Start signing..."}
+        {text || "Start signing..."}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "center", gap: "20px", margin: "15px 0" }}>
+      {/* Tiny Controls */}
+      <div style={styles.controls}>
         <button
           onClick={() => { setText(""); lastWrittenLetter.current = ""; }}
-          style={{ padding: "12px 24px", background: "red", color: "#fff", border: "none", borderRadius: 10, fontSize: "1.2rem", fontWeight: "bold", cursor: "pointer" }}
+          style={{...styles.btn, background: "red"}}
         >
-          CLEAR ALL
+          CLEAR
         </button>
         <button
           onClick={() => { setText(t => t.slice(0, -1)); lastWrittenLetter.current = ""; }}
-          style={{ padding: "12px 24px", background: "orange", color: "#fff", border: "none", borderRadius: 10, fontSize: "1.2rem", fontWeight: "bold", cursor: "pointer" }}
+          style={{...styles.btn, background: "orange"}}
         >
-          ⌫ BACKSPACE
+          BACK
         </button>
       </div>
 
-      <div style={{
-        margin: "auto", width: dim.w, height: dim.h, 
-        border: `6px solid #272704ff`,
-        borderRadius: "20px",
-        position: "relative", 
-        boxShadow: `0 0 30px #010000ff`, 
-        overflow: "hidden"
-      }}>
-        <Webcam ref={webcamRef} mirrored width={dim.w} height={dim.h} videoConstraints={{ width: dim.w, height: dim.h, facingMode: "user" }} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }} />
+      {/* Tiny Camera View */}
+      <div style={styles.camWrapper}>
+        <Webcam 
+          ref={webcamRef} 
+          mirrored 
+          style={styles.webcam}
+          videoConstraints={{ 
+             facingMode: "user",
+             aspectRatio: 1.3333 
+          }} 
+        />
+        <canvas ref={canvasRef} style={styles.canvas} />
       </div>
     </div>
   );
 }
+
+// --- Ultra Compact Styles ---
+const styles = {
+  container: {
+    background: "#ede7e7ff",
+    minHeight: "100vh",
+    color: "#210303ff",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "5px", // Very minimal padding
+    fontFamily: "system-ui, sans-serif",
+  },
+  title: {
+    fontSize: "1.2rem", // Small title
+    margin: "5px 0",
+    textAlign: "center",
+  },
+  gestureDisplay: {
+    fontSize: "1.5rem", // Small gesture text
+    margin: "0 0 5px 0",
+    minHeight: "30px",
+  },
+  textBox: {
+    width: "100%",
+    maxWidth: "360px", // Very narrow width
+    padding: "8px",
+    borderRadius: "8px",
+    minHeight: "40px",
+    fontSize: "1rem", // Standard text size
+    wordWrap: "break-word",
+    textAlign: "center",
+    marginBottom: "10px",
+  },
+  controls: {
+    display: "flex",
+    gap: "8px",
+    marginBottom: "10px",
+    justifyContent: "center",
+  },
+  btn: {
+    padding: "6px 12px", // Small buttons
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "0.8rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+    minWidth: "60px",
+  },
+  camWrapper: {
+    position: "relative",
+    width: "100%",           
+    maxWidth: "360px",       // Small camera container
+    aspectRatio: "4/3",      
+    border: `2px solid #272704ff`,
+    borderRadius: "10px",
+    overflow: "hidden",
+    boxShadow: `0 0 10px rgba(0,0,0,0.2)`,
+    backgroundColor: "#000",
+  },
+  webcam: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "contain", 
+  },
+  canvas: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "contain", 
+  }
+};
