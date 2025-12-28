@@ -10,47 +10,60 @@ export default function App() {
   const [detector, setDetector] = useState(null);
   const [gesture, setGesture] = useState("⏳ Loading...");
   const [text, setText] = useState("");
-  const [dim, setDim] = useState({ w: 640, h: 480 });
+  const [dim, setDim] = useState({ w: 480, h: 360 });
 
   const lastWrittenLetter = useRef("");
   const stableGesture = useRef("");
   const stableCount = useRef(0);
   const STABLE_THRESHOLD = 15;
 
-  // --- Track Hand Presence for Auto-Space ---
+  // --- SPACEBAR LOGIC VAR ---
   const wasHandPresent = useRef(false);
 
   // --- SMOOTHING BUFFER ---
   const gestureBuffer = useRef([]);
-  const BUFFER_SIZE = 5;
+  const BUFFER_SIZE = 10;
 
-  // Theme constants
   const THEME_COLOR = "#FFFFC5";
   const THEME_RGB = "255, 255, 197";
 
-  // --- RESPONSIVE DIMENSIONS LOGIC ---
+  // --- KEYBOARD LISTENERS ---
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Backspace") {
+        setText((prev) => prev.slice(0, -1));
+        lastWrittenLetter.current = "";
+      } else if (event.key === "Escape") {
+        setText("");
+        lastWrittenLetter.current = "";
+      } else if (event.key === " ") {
+        // Spacebar support
+        setText((prev) => prev + " ");
+        lastWrittenLetter.current = "";
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // --- RESPONSIVE DIMENSIONS ---
   useEffect(() => {
     const updateDimensions = () => {
-      // Get available screen width (minus some padding)
-      const screenWidth = window.innerWidth - 20; 
-      // Limit max height to leave room for text/buttons on mobile
-      const maxScreenHeight = window.innerHeight * 0.6; 
-      
-      const targetAspectRatio = 4 / 3;
-      
-      let w = screenWidth;
-      let h = w / targetAspectRatio;
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+      const isPortrait = screenH > screenW;
 
-      // If calculated height is too tall, scale down based on height
-      if (h > maxScreenHeight) {
-        h = maxScreenHeight;
-        w = h * targetAspectRatio;
-      }
+      let w, h;
 
-      // Cap at 640x480 for desktop performance
-      if (w > 640) {
-        w = 640;
-        h = 480;
+      if (isPortrait) {
+        // Mobile (Portrait)
+        w = Math.min(screenW - 20, 480);
+        h = w * 1.333; 
+      } else {
+        // Desktop (Landscape)
+        w = Math.min(screenW - 40, 480); 
+        h = w * 0.75; 
       }
 
       setDim({ w: Math.round(w), h: Math.round(h) });
@@ -94,57 +107,71 @@ export default function App() {
     const pinkyExt = isExtended(20, 17);
 
     const thumbTip = k[4];
-    const indexMcp = k[5];
+    const indexMcp = k[5]; 
     const distThumbIndex = Math.hypot(thumbTip.x - k[8].x, thumbTip.y - k[8].y);
     const distIndexTipKnuckle = Math.hypot(k[8].x - k[5].x, k[8].y - k[5].y);
 
     // --- LOGIC ---
-    if (indexExt && !middleExt && !ringExt && !pinkyExt) {
-      const xDiff = Math.abs(k[8].x - k[5].x);
-      const yDiff = Math.abs(k[8].y - k[5].y);
-      if (xDiff > yDiff + T(0.1)) return "G";
-      const distThumbBase = Math.hypot(thumbTip.x - indexMcp.x, thumbTip.y - indexMcp.y);
-      if (distThumbBase > T(0.9)) return "L";
-      if (k[8].y > k[6].y - T(0.2)) return "X";
-      return "D";
-    }
-
-    if (!middleExt && !ringExt && !pinkyExt) {
-      if (distIndexTipKnuckle > T(0.55)) return "O";
-    }
-
-    if (distThumbIndex < T(0.45)) {
-      if (middleExt && ringExt && pinkyExt) return "F";
-    }
-
-    if (indexExt && middleExt && !ringExt && !pinkyExt) {
-      const xDiff = Math.abs(k[8].x - k[5].x);
-      const yDiff = Math.abs(k[8].y - k[5].y);
-      if (xDiff > yDiff) return "H";
-      if (k[8].x > k[12].x && k[8].x - k[12].x < T(0.4)) return "R";
-      const distTips = Math.hypot(k[8].x - k[12].x, k[8].y - k[12].y);
-      if (distTips > T(0.5)) return "V";
-      return "U";
-    }
-
-    if (!indexExt && !middleExt && !ringExt && !pinkyExt) {
-      if (distIndexTipKnuckle > T(0.65)) return "O";
-      if (thumbTip.y > indexMcp.y) return "E";
-      const xDist = Math.abs(thumbTip.x - indexMcp.x);
-      if (xDist > T(0.25)) return "A";
-      return "S";
-    }
-
-    if (!indexExt && !middleExt && !ringExt && pinkyExt) {
-      const spread = Math.hypot(thumbTip.x - k[20].x, thumbTip.y - k[20].y);
-      if (spread > T(1.2)) return "Y";
-      return "I";
-    }
-
     if (indexExt && middleExt && ringExt && pinkyExt) {
       if (Math.abs(thumbTip.x - indexMcp.x) < T(0.35)) return "B";
       if (distThumbIndex < T(0.8) && distIndexTipKnuckle < T(0.85)) return "C";
       return "🖐️";
+    }
+
+    if (!indexExt && !middleExt && !ringExt && !pinkyExt) {
+      if (distIndexTipKnuckle > T(0.65)) return "O";
+      const thumbX = thumbTip.x;
+      const indexX = indexMcp.x;
+      const thumbY = thumbTip.y;
+      const indexY = indexMcp.y;
+
+      const distThumbMiddleX = Math.abs(thumbX - k[9].x);
+      if (distThumbMiddleX < T(0.2)) return "S";
+
+      const xDist = Math.abs(thumbX - indexX);
+      if (xDist > T(0.35)) return "A";
+
+      const thumbToIndexDist = Math.hypot(thumbX - indexX, thumbY - indexY);
+      if (thumbToIndexDist < T(0.4)) return "E";
+
+      if (Math.abs(thumbX - k[17].x) < T(0.3)) return "M"; 
+      if (Math.abs(thumbX - k[13].x) < T(0.3)) return "M"; 
+      if (Math.abs(thumbX - k[9].x) < T(0.3))  return "N"; 
+
+      return "✊"; 
+    }
+
+    if (indexExt && !middleExt && !ringExt && !pinkyExt) {
+      const xDiff = Math.abs(k[8].x - k[5].x);
+      const yDiff = Math.abs(k[8].y - k[5].y);
+      if (xDiff > yDiff + T(0.1)) return "G"; 
+      const distThumbBase = Math.hypot(thumbTip.x - indexMcp.x, thumbTip.y - indexMcp.y);
+      if (distThumbBase > T(0.9)) return "L"; 
+      if (k[8].y > k[6].y - T(0.2)) return "X"; 
+      return "D";
+    }
+
+    if (!middleExt && !ringExt && !pinkyExt) {
+       if (distIndexTipKnuckle > T(0.55)) return "O";
+    }
+    if (distThumbIndex < T(0.45)) {
+       if (middleExt && ringExt && pinkyExt) return "F";
+    }
+
+    if (indexExt && middleExt && !ringExt && !pinkyExt) {
+       const xDiff = Math.abs(k[8].x - k[5].x);
+       const yDiff = Math.abs(k[8].y - k[5].y);
+       if (xDiff > yDiff) return "H";
+       if (k[8].x > k[12].x && k[8].x - k[12].x < T(0.4)) return "R"; 
+       const distTips = Math.hypot(k[8].x - k[12].x, k[8].y - k[12].y);
+       if (distTips > T(0.5)) return "V";
+       return "U";
+    }
+
+    if (!indexExt && !middleExt && !ringExt && pinkyExt) {
+       const spread = Math.hypot(thumbTip.x - k[20].x, thumbTip.y - k[20].y);
+       if (spread > T(1.2)) return "Y";
+       return "I";
     }
 
     if (indexExt && middleExt && ringExt && !pinkyExt) return "W";
@@ -159,7 +186,7 @@ export default function App() {
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    // Explicitly set canvas size to match the calculated dimension state
+    
     canvas.width = dim.w;
     canvas.height = dim.h;
     ctx.clearRect(0, 0, dim.w, dim.h);
@@ -167,7 +194,9 @@ export default function App() {
     const hands = await detector.estimateHands(video, { flipHorizontal: true });
 
     if (hands.length > 0) {
-      wasHandPresent.current = true;
+      // ** HAND DETECTED **
+      wasHandPresent.current = true; // Mark hand as present
+
       const hand = hands[0];
       const rawGesture = recognizeGesture(hand);
 
@@ -198,36 +227,31 @@ export default function App() {
       }
 
       if (stableCount.current >= STABLE_THRESHOLD) {
-        if (smoothedGesture !== "🖐️" && smoothedGesture !== "👀 Show your hand") {
+        if (smoothedGesture !== "🖐️" && smoothedGesture !== "👀 Show your hand" && smoothedGesture !== "✊") {
           if (smoothedGesture !== lastWrittenLetter.current) {
             setText((t) => t + smoothedGesture);
             lastWrittenLetter.current = smoothedGesture;
           }
-        } else if (smoothedGesture === "🖐️") {
-          lastWrittenLetter.current = "";
+        } else if (smoothedGesture === "🖐️" || smoothedGesture === "✊") {
+          lastWrittenLetter.current = ""; 
         }
       }
 
       ctx.fillStyle = THEME_COLOR;
       hand.keypoints.forEach((p) => {
         ctx.beginPath();
-        // Scale points if video size differs from internal resolution
         ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
         ctx.fill();
       });
     } else {
+      // ** HAND LOST (Auto Space Logic) **
       setGesture("👀 Show Hand");
       stableCount.current = 0;
       lastWrittenLetter.current = "";
 
-      // ** AUTO SPACE LOGIC **
       if (wasHandPresent.current) {
-          setText(prev => {
-              if (prev.length > 0 && !prev.endsWith(" ")) {
-                  return prev + " ";
-              }
-              return prev;
-          });
+          // If the hand was visible and now it's gone, add a space
+          setText(prev => (prev.length > 0 && !prev.endsWith(" ") ? prev + " " : prev));
           wasHandPresent.current = false;
       }
     }
@@ -253,101 +277,72 @@ export default function App() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "flex-start", // Align top for mobile
-        padding: "20px 10px", // Less padding on sides for mobile
+        justifyContent: "flex-start",
+        padding: "15px",
         boxSizing: "border-box",
         overflowX: "hidden"
       }}
     >
-      <h1 style={{ 
-        fontSize: "clamp(1.8rem, 5vw, 2.5rem)", 
-        margin: "0 0 10px 0" 
-      }}>
+      <h1 style={{ fontSize: "clamp(0.8rem, 4vw, 1rem)", margin: "0 0 10px 0" }}>
         🤟 ASL Fingerspelling
       </h1>
 
-      <h2
-        style={{
-          fontSize: "clamp(3rem, 10vw, 4.5rem)",
-          color: "#272704ff",
-          margin: "0 0 15px 0",
-          minHeight: "60px"
-        }}
-      >
+      <h2 style={{ fontSize: "clamp(1rem, 6vw, 1.5rem)", margin: "0 0 10px 0", color: "#272704ff", minHeight: "30px" }}>
         {gesture}
       </h2>
 
       <div
         style={{
           width: "100%",
-          maxWidth: "600px",
-          padding: "15px",
+          maxWidth: "480px",
+          padding: "10px",
           border: `2px solid ${THEME_COLOR}`,
           borderRadius: 12,
-          minHeight: "70px",
-          fontSize: "1.5rem",
+          minHeight: "50px",
+          fontSize: "1.2rem",
           background: `rgba(${THEME_RGB}, 0.1)`,
           wordWrap: "break-word",
           textAlign: "left",
-          marginBottom: "20px"
+          marginBottom: "15px"
         }}
       >
-        {text || <span style={{opacity: 0.6}}>✍️ Start signing...</span>}
+        {text || <span style={{opacity:0.5}}>Start signing...</span>}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "15px",
-          marginBottom: "20px",
-          flexWrap: "wrap"
-        }}
-      >
+      <div style={{ display: "flex", gap: "15px", marginBottom: "15px" }}>
         <button
-          onClick={() => {
-            setText("");
-            lastWrittenLetter.current = "";
-          }}
+          onClick={() => { setText(""); lastWrittenLetter.current = ""; }}
           style={{
-            padding: "12px 24px",
+            padding: "8px 16px",
             background: "red",
             color: "#fff",
             border: "none",
-            borderRadius: 10,
-            fontSize: "1rem",
+            borderRadius: 8,
+            fontSize: "0.9rem",
             fontWeight: "bold",
-            cursor: "pointer",
-            flex: "1 1 auto",
-            minWidth: "120px"
+            cursor: "pointer"
           }}
         >
-          CLEAR ALL
+          CLEAR
         </button>
 
         <button
-          onClick={() => {
-            setText((t) => t.slice(0, -1));
-            lastWrittenLetter.current = "";
-          }}
+          onClick={() => { setText((t) => t.slice(0, -1)); lastWrittenLetter.current = ""; }}
           style={{
-            padding: "12px 24px",
+            padding: "8px 16px",
             background: "orange",
             color: "#fff",
             border: "none",
-            borderRadius: 10,
-            fontSize: "1rem",
+            borderRadius: 8,
+            fontSize: "0.9rem",
             fontWeight: "bold",
-            cursor: "pointer",
-            flex: "1 1 auto",
-            minWidth: "120px"
+            cursor: "pointer"
           }}
         >
-          ⌫ BACKSPACE
+          BACK
         </button>
       </div>
 
-      {/* Camera Container */}
       <div
         style={{
           position: "relative",
@@ -355,9 +350,9 @@ export default function App() {
           height: dim.h,
           border: `4px solid #272704ff`,
           borderRadius: "20px",
-          boxShadow: `0 0 20px #010000ff`,
           overflow: "hidden",
-          background: "#000"
+          backgroundColor: "#000",
+          boxShadow: `0 0 15px rgba(0,0,0,0.3)`
         }}
       >
         <Webcam
@@ -366,15 +361,10 @@ export default function App() {
           width={dim.w}
           height={dim.h}
           videoConstraints={{
-            width: dim.w,
-            height: dim.h,
             facingMode: "user",
+            aspectRatio: dim.h > dim.w ? 0.75 : 1.333
           }}
-          style={{ 
-            width: "100%", 
-            height: "100%", 
-            objectFit: "cover" // Ensures video fills the container
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
         <canvas
           ref={canvasRef}
