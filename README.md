@@ -2,7 +2,7 @@
 
 # Signetic 
 
-**Real-time AI Sign Language to Text Converter**
+**Real-time ML Sign Language to Text Converter**
 
 
 
